@@ -61,7 +61,7 @@ The system employs an event-driven architecture designed for low-latency telemet
 +--------------------------+                 +--------------------------+
 ```
 
-1. **Backend Telemetry Engine (`simulator.py`)**: Continuously updates geospatial coordinates, velocities, and threat levels for active airborne targets in an asynchronous `asyncio` event loop.
+1. **Backend Telemetry Engine (`server.py`)**: Continuously updates geospatial coordinates, velocities, and threat levels for active airborne targets in an asynchronous `asyncio` event loop.
 2. **WebSocket Pipeline (`websockets`)**: Transmits full JSON swarm payloads at 1 Hz intervals over local network port `8765`.
 3. **Command & Control UI (`index.html`)**: Consumes incoming streams, dynamically creates/updates vector markers on a Leaflet map, and evaluates global perimeter breach thresholds.
 
@@ -142,8 +142,8 @@ The backend broadcasts telemetry packages formatted according to standard C-UAS 
 
 1. **Clone or download this repository**:
    ```bash
-   git clone https://github.com/your-username/c-uas-drone-tactical-system.git
-   cd c-uas-drone-tactical-system
+   git clone    https://github.com/liliaqvq/drone-tactical-system/
+   cd drone-tactical-system
    ```
 
 2. **Install Python dependencies**:
@@ -153,7 +153,7 @@ The backend broadcasts telemetry packages formatted according to standard C-UAS 
 
 3. **Start the Telemetry Server**:
    ```bash
-   python simulator.py
+   python server.py
    ```
    *You should see:* `📡 Servidor C-UAS (Enjambre) corriendo en ws://127.0.0.1:8765...`
 
