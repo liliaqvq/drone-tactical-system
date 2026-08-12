@@ -7,13 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-        #map { height: calc(100vh - 180px); }
-    </style>
+    <link rel="stylesheet" href="static/css/style.css">
 </head>
 <body class="bg-gray-950 text-green-400 font-mono p-4">
 
-    <!-- Encabezado Táctico -->
     <header class="flex justify-between items-center border-b border-green-800 pb-3 mb-4">
         <div>
             <h1 class="text-xl font-bold tracking-widest text-green-300">🛡️ MULTI-TARGET C-UAS RADAR</h1>
@@ -24,26 +21,19 @@
         </div>
     </header>
 
-    <!-- Panel Principal -->
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        
-        <!-- Mapa Interactivo -->
         <div class="lg:col-span-3 bg-gray-900 border border-gray-800 rounded-lg overflow-hidden relative">
             <div id="map"></div>
         </div>
 
-        <!-- Sidebar de Estado del Enjambre -->
         <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 flex flex-col justify-between">
             <div>
                 <h2 class="text-sm font-bold text-gray-400 border-b border-gray-800 pb-2 mb-3">AMENAZAS DETECTADAS</h2>
-                
-                <!-- Lista Dinámica de Drones -->
                 <div id="drone-list" class="space-y-3 text-xs">
                     <p class="text-gray-500">Buscando señales...</p>
                 </div>
             </div>
 
-            <!-- Estado Global de Alerta -->
             <div id="alert-box" class="mt-6 p-3 bg-gray-950 border border-gray-800 text-center rounded transition-all">
                 <span class="text-gray-500 text-xs block">ESTADO DEL PERÍMETRO</span>
                 <span id="threat-level" class="text-sm font-bold text-green-400">SECTOR SEGURO</span>
@@ -51,102 +41,8 @@
         </div>
     </div>
 
-    <script>
-        // 1. Inicializa el mapa
-        const map = L.map('map').setView([37.7750, -122.4194], 14);
-        
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
-
-        // 2. Dibuja la ZONA RESTRINGIDA (Geofence) en rojo semitransparente
-        const geofenceCircle = L.circle([37.7780, -122.4194], {
-            color: '#ef4444',
-            fillColor: '#f87171',
-            fillOpacity: 0.25,
-            radius: 500
-        }).addTo(map);
-
-        geofenceCircle.bindPopup("<b>ZONA RESTRINGIDA DE DEFENSA</b><br>Perímetro Autónomo");
-
-        // Objeto para almacenar múltiples marcadores en el mapa
-        const droneMarkers = {};
-
-        // 3. Conexión WebSocket
-        const socket = new WebSocket("ws://127.0.0.1:8765");
-
-        socket.onopen = () => {
-            const status = document.getElementById("connection-status");
-            status.innerText = "RADAR ONLINE";
-            status.className = "px-3 py-1 bg-green-950 text-green-400 border border-green-700 rounded text-xs font-bold";
-        };
-
-        socket.onmessage = (event) => {
-            const swarm = JSON.parse(event.data);
-            const droneListContainer = document.getElementById("drone-list");
-            droneListContainer.innerHTML = ""; // Limpia la lista previa
-
-            let hasCriticalThreat = false;
-
-            swarm.forEach(drone => {
-                const isCritical = drone.threat_level === "CRITICAL";
-                if (isCritical) hasCriticalThreat = true;
-
-                // Actualiza o crea el marcador en el mapa
-                const latLng = [drone.coordinates.lat, drone.coordinates.lng];
-                
-                if (!droneMarkers[drone.drone_id]) {
-                    droneMarkers[drone.drone_id] = L.circleMarker(latLng, {
-                        color: isCritical ? '#ef4444' : '#f59e0b',
-                        fillColor: isCritical ? '#dc2626' : '#d97706',
-                        fillOpacity: 0.9,
-                        radius: 8
-                    }).addTo(map).bindTooltip(drone.drone_id, { permanent: true, direction: 'right' });
-                } else {
-                    droneMarkers[drone.drone_id].setLatLng(latLng);
-                    droneMarkers[drone.drone_id].setStyle({
-                        color: isCritical ? '#ef4444' : '#f59e0b',
-                        fillColor: isCritical ? '#dc2626' : '#d97706'
-                    });
-                }
-
-                // Agrega una tarjeta a la barra lateral por cada dron
-                const card = document.createElement("div");
-                card.className = `p-2 border rounded ${isCritical ? 'bg-red-950/40 border-red-700' : 'bg-gray-950 border-gray-800'}`;
-                card.innerHTML = `
-                    <div class="flex justify-between font-bold">
-                        <span class="text-white">${drone.drone_id}</span>
-                        <span class="${isCritical ? 'text-red-400 animate-pulse' : 'text-yellow-400'}">${drone.classification}</span>
-                    </div>
-                    <div class="text-[10px] text-gray-400 mt-1">
-                        Velocidad: ${drone.speed_kmh} km/h <br>
-                        Pos: ${drone.coordinates.lat}, ${drone.coordinates.lng}
-                    </div>
-                `;
-                droneListContainer.appendChild(card);
-            });
-
-            // Actualiza la alerta global si al menos un dron entra al perímetro
-            const alertBox = document.getElementById("alert-box");
-            const threatText = document.getElementById("threat-level");
-            
-            if (hasCriticalThreat) {
-                alertBox.className = "mt-6 p-3 bg-red-950 border border-red-600 text-center rounded animate-pulse";
-                threatText.innerText = "¡INTRUSIÓN EN PERÍMETRO!";
-                threatText.className = "text-sm font-bold text-red-500";
-            } else {
-                alertBox.className = "mt-6 p-3 bg-gray-950 border border-gray-800 text-center rounded";
-                threatText.innerText = "SECTOR SEGURO";
-                threatText.className = "text-sm font-bold text-green-400";
-            }
-        };
-
-        socket.onclose = () => {
-            const status = document.getElementById("connection-status");
-            status.innerText = "RADAR OFFLINE";
-            status.className = "px-3 py-1 bg-red-950 text-red-400 border border-red-700 rounded text-xs font-bold";
-        };
-    </script>
+    <!-- Scripts Modulares -->
+    <script src="static/js/map.js"></script>
+    <script src="static/js/websocket.js"></script>
 </body>
 </html>
